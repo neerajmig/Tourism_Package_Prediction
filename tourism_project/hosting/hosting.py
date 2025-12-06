@@ -4,7 +4,7 @@ import os
 
 api = HfApi(token=os.getenv("HF_TOKEN"))
 
-space_repo_id = "neerajig/tourism_package_prediction"
+space_repo_id = "neerajig/tourism_pkg_prediction"
 repo_type = "space"
 
 # Step 1: Check if the space exists, if not, create it
