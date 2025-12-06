@@ -14,13 +14,22 @@ import os
 from huggingface_hub import login, HfApi, create_repo # Removed hf_hub_download
 from huggingface_hub.utils import RepositoryNotFoundError, HfHubHTTPError
 import mlflow
-
+import os 
 # Login to Hugging Face is already handled by os.getenv("HF_TOKEN") for HfApi()
 # and in prep.py for other operations, so explicit login here is redundant but harmless.
 login(os.getenv("HF_TOKEN"))
 
-mlflow.set_tracking_uri("http://localhost:5000")
+
+
+import mlflow
+
+
+
+tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns")  
+mlflow.set_tracking_uri(tracking_uri)
+
 mlflow.set_experiment("Tourism-Package-Prediction-Experiment")
+
 
 api = HfApi()
 
