@@ -1,27 +1,59 @@
-mport streamlit as st
+import os
+import streamlit as st
 import pandas as pd
 import joblib
-from huggingface_hub import hf_hub_download # Import hf_hub_download
+from huggingface_hub import hf_hub_download, HfHubHTTPError
 
 # ---------------------------------------------------
-# Load trained tourism model
+# Config for model on Hugging Face Hub
 # ---------------------------------------------------
-MODEL_REPO_ID = "neerajig/tourism_package_prediction_model" # Hugging Face Model Hub repo ID
-MODEL_FILENAME = "best_tourism_package_prediction_model_v1.joblib" # Name of the model file in the repo
+MODEL_REPO_ID = "neerajig/tourism_package_prediction_model"
+MODEL_FILENAME = "best_tourism_package_prediction_model_v1.joblib"
 
-# Download the model file from Hugging Face Hub
-model_path = hf_hub_download(repo_id=MODEL_REPO_ID, filename=MODEL_FILENAME, repo_type="model")
 
-# Load the model from the local downloaded path
-model = joblib.load(model_path)
+@st.cache_resource
+def load_model():
+    """
+    Download and load the model from Hugging Face Hub.
+    If anything goes wrong, return (None, error_message).
+    """
+    token = os.getenv("HF_TOKEN")  # optional: only needed if repo is private
+
+    try:
+        model_path = hf_hub_download(
+            repo_id=MODEL_REPO_ID,
+            filename=MODEL_FILENAME,
+            repo_type="model",
+            token=token,
+        )
+        model = joblib.load(model_path)
+        return model, None
+    except HfHubHTTPError as e:
+        return None, f"Hugging Face Hub error while loading model: {e}"
+    except Exception as e:
+        return None, f"Unexpected error while loading model: {e}"
+
 
 st.set_page_config(page_title="Tour Package Purchase Prediction", layout="centered")
 
 st.title("Tour Package Purchase Prediction App")
-st.write("""
+st.write(
+    """
 Fill in the customer details below and the model will predict
 whether the customer is likely to **take the tour package (ProdTaken)**.
-""")
+"""
+)
+
+# --------------------------
+# Load model
+# --------------------------
+model, model_error = load_model()
+if model_error:
+    st.error(
+        "❌ Could not load the model from Hugging Face Hub.\n\n"
+        f"Details: {model_error}"
+    )
+    st.stop()  # stop rendering the rest of the app, but Space stays alive
 
 # --------------------------
 # Input widgets (features)
@@ -45,9 +77,8 @@ occupation = st.selectbox(
     ["Salaried", "Self Employed", "Free Lancer", "Other"]
 )
 
-# UI label vs actual value used in model
 gender_ui = st.selectbox("Gender", ["Male", "Female"])
-gender = "Male" if gender_ui == "Male" else "FeMale"   # matches cleaned training data
+gender = "Male" if gender_ui == "Male" else "FeMale"
 
 number_of_person_visiting = st.number_input(
     "Number Of Person Visiting", min_value=1, max_value=10, value=3
@@ -76,7 +107,7 @@ number_of_trips = st.number_input(
 )
 
 passport_ui = st.selectbox("Passport", ["No", "Yes"])
-passport = 1 if passport_ui == "Yes" else 0   # your data uses 0/1
+passport = 1 if passport_ui == "Yes" else 0
 
 pitch_satisfaction_score = st.selectbox(
     "Pitch Satisfaction Score", [1, 2, 3, 4, 5]
@@ -99,7 +130,7 @@ monthly_income = st.number_input(
 )
 
 # ---------------------------------------------------
-# Assemble input into DataFrame (no ProdTaken here)
+# Assemble input into DataFrame
 # ---------------------------------------------------
 input_data = pd.DataFrame([{
     "Age": age,
@@ -129,20 +160,23 @@ st.dataframe(input_data)
 # Prediction
 # ---------------------------------------------------
 if st.button("Predict ProdTaken"):
-    # Model expects 'TypeofContact' as numeric (label encoded)
-    # Assuming 'TypeofContact' in input_data is a string, we need to encode it.
-    # For simplicity, assuming 'Company Invited' is 0 and 'Self Enquiry' is 1 as per prep.py
-    input_data['TypeofContact'] = input_data['TypeofContact'].apply(lambda x: 1 if x == 'Self Enquiry' else 0)
+    # Encode TypeofContact just like in prep.py
+    input_data["TypeofContact"] = input_data["TypeofContact"].apply(
+        lambda x: 1 if x == "Self Enquiry" else 0
+    )
 
-    pred = model.predict(input_data)[0]          # 0 or 1
-    prob = None
+    pred = model.predict(input_data)[0]
+
     try:
-        prob = model.predict_proba(input_data)[:, 1][0]  # probability of ProdTaken = 1
-    except Exception as e:
-        st.error(f"Error getting probabilities: {e}")
+        prob = model.predict_proba(input_data)[0][1]
+    except Exception:
+        prob = None
 
-    result_text = "Customer WILL take the package (ProdTaken = 1)" if pred == 1 \
-                  else "Customer will NOT take the package (ProdTaken = 0)"
+    result_text = (
+        "✅ Customer WILL take the package (ProdTaken = 1)"
+        if pred == 1
+        else "❌ Customer will NOT take the package (ProdTaken = 0)"
+    )
 
     st.subheader("Prediction Result:")
     st.success(result_text)
