@@ -33,7 +33,7 @@ mlflow.set_experiment("Tourism-Package-Prediction-Experiment")
 
 api = HfApi()
 
-dataset_repo_id = "neerajig/Tourism-Package-Prediction"
+dataset_repo_id = "neerajig/Tourism-Pkg-Prediction"
 
 # Construct direct URLs for reading the CSV files from Hugging Face Hub
 # This bypasses potential issues with hf_hub_download or HfFileSystem
