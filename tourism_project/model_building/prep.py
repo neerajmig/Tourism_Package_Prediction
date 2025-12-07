@@ -22,7 +22,7 @@ api = HfApi(token=token)
 # 2. Download dataset from HF
 # -----------------------------
 # Repo and filename on Hugging Face
-HF_DATASET_REPO = "neerajig/Tourism-Package-Prediction"
+HF_DATASET_REPO = "neerajig/tourism_pkg1_prediction"
 HF_DATASET_FILE = "tourism.csv"
 
 local_dataset_path = hf_hub_download(
